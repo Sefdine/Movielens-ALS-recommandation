@@ -21,40 +21,40 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-ELASTICSEARCH_INDEX = 'users'
+def loadUsers(user_df):
 
-try:
-    print('Connecting to Elasticsearch')
-    es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
-    
-    if not es.indices.exists(index='movies'):
-        # Create the index
-        es.indices.create(index='movies', ignore=400) 
-except Exception as e:
-    logging.error(f"Can't connect to elasticsearch {str(e)}")
+    ELASTICSEARCH_INDEX = 'users'
 
-# Create a spark session
-spark = SparkSession.builder \
-    .appName("usersLoadTransform") \
-    .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.15.1") \
-    .getOrCreate()
+    try:
+        print('Connecting to Elasticsearch')
+        es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
+        
+        if not es.indices.exists(index='movies'):
+            # Create the index
+            es.indices.create(index='movies', ignore=400) 
+    except Exception as e:
+        logging.error(f"Can't connect to elasticsearch {str(e)}")
 
-user_df = getUsers()
+    # Create a spark session
+    spark = SparkSession.builder \
+        .appName("usersLoadTransform") \
+        .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.15.1") \
+        .getOrCreate()
 
-user_df = user_df.withColumn("occupation", when(user_df['occupation'] == "Other", "other").otherwise(user_df['occupation']))
+    user_df = user_df.withColumn("occupation", when(user_df['occupation'] == "Other", "other").otherwise(user_df['occupation']))
 
-try:
-    # Function to save DataFrame to Elasticsearch
-    user_df.write \
-        .format("org.elasticsearch.spark.sql") \
-        .option("es.resource", ELASTICSEARCH_INDEX) \
-        .option("es.nodes.wan.only", "true") \
-        .option("es.index.auto.create", "true") \
-        .mode("append") \
-        .save()
+    try:
+        # Function to save DataFrame to Elasticsearch
+        user_df.write \
+            .format("org.elasticsearch.spark.sql") \
+            .option("es.resource", ELASTICSEARCH_INDEX) \
+            .option("es.nodes.wan.only", "true") \
+            .option("es.index.auto.create", "true") \
+            .mode("append") \
+            .save()
 
-    print("Users inserted successfully")
-except Exception as e:
-    logging.error(f"Error inserting users {str(e)}")
+        print("Users inserted successfully")
+    except Exception as e:
+        logging.error(f"Error inserting users {str(e)}")
 
 

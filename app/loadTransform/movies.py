@@ -22,40 +22,41 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-ELASTICSEARCH_INDEX = 'movies'
+def loadMovies(movies_df):
+        
+    ELASTICSEARCH_INDEX = 'movies'
 
-try:
-    print('Connecting to Elasticsearch')
-    es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
-    
-    if not es.indices.exists(index='movies'):
-        # Create the index
-        es.indices.create(index='movies', ignore=400) 
-except Exception as e:
-    logging.error(f"Can't connect to elasticsearch {str(e)}")
+    try:
+        print('Connecting to Elasticsearch')
+        es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
+        
+        if not es.indices.exists(index='movies'):
+            # Create the index
+            es.indices.create(index='movies', ignore=400) 
+    except Exception as e:
+        logging.error(f"Can't connect to elasticsearch {str(e)}")
 
-# Create a spark session
-spark = SparkSession.builder \
-    .appName("moviesLoadTransform") \
-    .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.15.1") \
-    .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
-    .getOrCreate()
+    # Create a spark session
+    spark = SparkSession.builder \
+        .appName("moviesLoadTransform") \
+        .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.15.1") \
+        .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
+        .getOrCreate()
 
-movies_df = getMovies()
+    try:
+        # Convert release date into date
+        movies_df = movies_df.withColumn("release_date", date_format(col("release_date"), "yyyy-MM-dd"))
 
-try:
-    # Convert release date into date
-    movies_df = movies_df.withColumn("release_date", date_format(col("release_date"), "yyyy-MM-dd"))
+        # Function to save DataFrame to Elasticsearch
+        movies_df.write \
+            .format("org.elasticsearch.spark.sql") \
+            .option("es.resource", ELASTICSEARCH_INDEX) \
+            .option("es.nodes.wan.only", "true") \
+            .option("es.index.auto.create", "true") \
+            .mode("append") \
+            .save()
 
-    # Function to save DataFrame to Elasticsearch
-    movies_df.write \
-        .format("org.elasticsearch.spark.sql") \
-        .option("es.resource", ELASTICSEARCH_INDEX) \
-        .option("es.nodes.wan.only", "true") \
-        .option("es.index.auto.create", "true") \
-        .mode("append") \
-        .save()
+        print("Movies inserted successfully")
+    except Exception as e:
+        logging.error(f"Error inserting movies {str(e)}")
 
-    print("Movies inserted successfully")
-except Exception as e:
-    logging.error(f"Error inserting movies {str(e)}")

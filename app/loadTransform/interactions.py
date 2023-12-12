@@ -21,60 +21,59 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-ELASTICSEARCH_INDEX = 'interactions'
+def loadTransactions(interactions_df):
 
-try:
-    print('Connecting to Elasticsearch')
-    es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
-    
-    if not es.indices.exists(index='movies'):
-        # Create the index
-        es.indices.create(index='movies', ignore=400) 
-except Exception as e:
-    logging.error(f"Can't connect to elasticsearch {str(e)}")
+    ELASTICSEARCH_INDEX = 'interactions'
 
-# Create a spark session
-spark = SparkSession.builder \
-    .appName("interactionsLoadTransform") \
-    .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.15.1") \
-    .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
-    .getOrCreate()
+    try:
+        print('Connecting to Elasticsearch')
+        es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
+        
+        if not es.indices.exists(index='movies'):
+            # Create the index
+            es.indices.create(index='movies', ignore=400) 
+    except Exception as e:
+        logging.error(f"Can't connect to elasticsearch {str(e)}")
 
-interactions_df = getInteractions()
+    # Create a spark session
+    spark = SparkSession.builder \
+        .appName("interactionsLoadTransform") \
+        .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.15.1") \
+        .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
+        .getOrCreate()
 
-try:
-    # Convert the integer timestamp to a timestamp type
-    interactions_df = interactions_df.withColumn("timestamp", from_unixtime(col("timestamp")))
+    try:
+        # Convert the integer timestamp to a timestamp type
+        interactions_df = interactions_df.withColumn("timestamp", from_unixtime(col("timestamp")))
 
-    # Apply date_format function to convert timestamp to date with the desired format
-    interactions_df = interactions_df.withColumn("timestamp", date_format(col("timestamp"), "yyyy-MM-dd"))
+        # Apply date_format function to convert timestamp to date with the desired format
+        interactions_df = interactions_df.withColumn("timestamp", date_format(col("timestamp"), "yyyy-MM-dd"))
 
-    # Split the DataFrame into 70% and 30%
-    split_df = interactions_df.randomSplit([0.7, 0.3], seed=42)
-    
-    # Extract 70% DataFrame
-    interactions_70_df = split_df[0]
+        # Function to save 70% DataFrame to Elasticsearch
+        interactions_df.write \
+            .format("org.elasticsearch.spark.sql") \
+            .option("es.resource", ELASTICSEARCH_INDEX) \
+            .option("es.nodes.wan.only", "true") \
+            .option("es.index.auto.create", "true") \
+            .mode("append") \
+            .save()
 
-    # Extract 30% DataFrame
-    interactions_30_df = split_df[1]
+        print("Interactions inserted successfully into Elasticsearch")
 
-    # Function to save 70% DataFrame to Elasticsearch
-    interactions_70_df.write \
-        .format("org.elasticsearch.spark.sql") \
-        .option("es.resource", ELASTICSEARCH_INDEX) \
-        .option("es.nodes.wan.only", "true") \
-        .option("es.index.auto.create", "true") \
-        .mode("append") \
-        .save()
+    except Exception as e:
+        logging.error(f"Error inserting interactions {str(e)}")
 
-    print("Interactions (70%) inserted successfully into Elasticsearch")
 
-    # Convert PySpark DataFrame to Pandas DataFrame
-    interactions_30_pandas = interactions_30_df.toPandas()
+def loadJsonInteractions(data):
 
-    # Save 30% DataFrame to a single JSON file using Pandas
-    interactions_30_pandas.to_json("../api/interactions_30.json", orient="records", lines=True)
+    try:
+        # Convert PySpark DataFrame to Pandas DataFrame
+        data = data.toPandas()
 
-    print("Interactions (30%) saved successfully to JSON file")
-except Exception as e:
-    logging.error(f"Error inserting interactions {str(e)}")
+        # Save 30% DataFrame to a single JSON file using Pandas
+        data.to_json("../api/interactions_30.json", orient="records", lines=True)
+
+        print("30% of interactions loaded successfully in json")
+
+    except Exception as e: 
+        logging.error(f"Error creating json file, {str(e)}")
