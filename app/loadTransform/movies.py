@@ -6,7 +6,7 @@ from pyspark.sql.functions import when
 from elasticsearch import Elasticsearch
 import logging
 from datetime import datetime
-from pyspark.sql.functions import to_date, unix_timestamp
+from pyspark.sql.functions import to_date, unix_timestamp, date_format, col
 
 # Set up a file for logs
 now = str(datetime.now().year)+"-"+str(datetime.now().month)+"-"+str(datetime.now().day)
@@ -44,6 +44,9 @@ spark = SparkSession.builder \
 movies_df = getMovies()
 
 try:
+    # Convert release date into date
+    movies_df = movies_df.withColumn("release_date", date_format(col("release_date"), "yyyy-MM-dd"))
+
     # Function to save DataFrame to Elasticsearch
     movies_df.write \
         .format("org.elasticsearch.spark.sql") \
