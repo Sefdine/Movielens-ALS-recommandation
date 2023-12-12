@@ -1,11 +1,12 @@
 from pyspark.sql import SparkSession
 import sys
 sys.path.append('..')
-from app.extract.users import getUsers
+from app.extract.movies import getMovies
 from pyspark.sql.functions import when
 from elasticsearch import Elasticsearch
 import logging
 from datetime import datetime
+from pyspark.sql.functions import to_date, unix_timestamp
 
 # Set up a file for logs
 now = str(datetime.now().year)+"-"+str(datetime.now().month)+"-"+str(datetime.now().day)
@@ -21,7 +22,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-ELASTICSEARCH_INDEX = 'users'
+ELASTICSEARCH_INDEX = 'movies'
 
 try:
     print('Connecting to Elasticsearch')
@@ -35,17 +36,16 @@ except Exception as e:
 
 # Create a spark session
 spark = SparkSession.builder \
-    .appName("usersLoadTransform") \
+    .appName("moviesLoadTransform") \
     .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.15.1") \
+    .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
     .getOrCreate()
 
-user_df = getUsers()
-
-user_df = user_df.withColumn("occupation", when(user_df['occupation'] == "Other", "other").otherwise(user_df['occupation']))
+movies_df = getMovies()
 
 try:
     # Function to save DataFrame to Elasticsearch
-    user_df.write \
+    movies_df.write \
         .format("org.elasticsearch.spark.sql") \
         .option("es.resource", ELASTICSEARCH_INDEX) \
         .option("es.nodes.wan.only", "true") \
@@ -53,8 +53,6 @@ try:
         .mode("append") \
         .save()
 
-    print("Users inserted successfully")
+    print("Movies inserted successfully")
 except Exception as e:
-    logging.error(f"Error inserting users {str(e)}")
-
-
+    logging.error(f"Error inserting movies {str(e)}")

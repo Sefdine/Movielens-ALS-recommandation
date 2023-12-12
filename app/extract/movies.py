@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, udf
-from pyspark.sql.types import ArrayType, StringType, StructType, StructField, IntegerType, TimestampType
-from pyspark.sql.functions import unix_timestamp
+from pyspark.sql.types import ArrayType, StringType, StructType, StructField, IntegerType
+from pyspark.sql.functions import to_date
 
 def getMovies():
     # Create a Spark session
@@ -31,7 +31,7 @@ def getMovies():
     item_df = item_df.withColumn("movie_id", item_df["movie_id"].cast(IntegerType()))
 
     # Convert 'release_date' to timestamp
-    item_df = item_df.withColumn("release_date", unix_timestamp(item_df["release_date"], "dd-MMM-yyyy").cast(TimestampType()))
+    item_df = item_df.withColumn("release_date", to_date(item_df["release_date"], "dd-MMM-yyyy"))
 
     # Create a UDF to convert columns to a list of genres
     def genres_to_list(*genres):
