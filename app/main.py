@@ -25,7 +25,7 @@ logging.basicConfig(
 
 # Create a spark session
 spark = SparkSession.builder \
-    .appName("interactionsLoadTransform") \
+    .appName("insertAllData") \
     .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.15.1") \
     .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
     .getOrCreate()
