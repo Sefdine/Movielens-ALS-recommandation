@@ -1,3 +1,5 @@
 checkpoint
 jars
 data/
+app/model/final_model
+app/model/good_model
