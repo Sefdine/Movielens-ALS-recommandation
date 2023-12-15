@@ -30,12 +30,7 @@
     <header>
       <nav class="navbar" style="background-color: rgb(36, 165, 224);">
         <div class="container">
-          <a class="navbar-brand ml-4" href="/">Netflex</a>
-          <div class="navbar-nav d-flex flex-row">
-            <a class="nav-link mr-3" href="/">Home</a>
-            <a class="nav-link ml-3 mr-3" href="#">Film</a>
-            <a class="nav-link mr-3" href="#">About Us</a>
-          </div>
+          <a class="navbar-brand m-auto" href="/">Netflex</a>
         </div>
       </nav>
           
@@ -58,7 +53,8 @@
                 {% for movie in movies %}
                 <div class="col mb-4">
                     <div class="card" style="width: 23rem;">
-                        <img src="https://www.themoviedb.org/t/p/w300_and_h450_bestv2{{ movie._source.poster_path }}" style="width: 400px;height: 300px;" class="card-img-top img-fluid" alt="...">
+                      <img src="{{ url_for('static', filename='movie.png') }}" style="width: 400px; height: 300px;" class="card-img-top img-fluid" alt="...">
+
                         <div class="card-body">
                             <h5 class="card-title">{{movie._source.title}}</h5>
                         </div>
