@@ -6,7 +6,7 @@ from wtforms.validators import DataRequired
 from math import ceil
 import secrets
 
-app = Flask(__name__, template_folder='../templates')
+app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 
 # create connection with elasticsearch version
@@ -19,7 +19,7 @@ index_name = 'movies'
 def getUser(user_id):
     query = {
         "query": {
-            "term": {'user_id': user_id}
+            "term": {'user_id': str(user_id)}
         }
     }
 
@@ -64,18 +64,9 @@ def get_movie_by_title(title):
     result = client.search(index=index_name, body=query)
     movies = result['hits']['hits']
     if movies:
-        return movies[0]  # Assuming you want to return the first matching movie
+        return movies[0] 
     else:
-        return None  # Movie not found
-
-
-@app.route('/movie/<string:title>')
-def get_movie_info(title):
-    result = get_movie_by_title(title)
-    if result:
-        return jsonify(result)
-    else:
-        return jsonify({'title': title, 'message': 'Movie not found'})
+        return None
 
 @app.route('/user/<string:user_id>', methods=['GET', 'POST'])
 def index(user_id):
