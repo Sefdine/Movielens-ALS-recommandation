@@ -7,8 +7,8 @@ def getUsers():
 
     # Define the schema based on your column names and data types
     schema = StructType([
-        StructField("index", IntegerType(), True),
         StructField("user_id", IntegerType(), True),
+        StructField("age", IntegerType(), True),
         StructField("gender", StringType(), True),
         StructField("occupation", StringType(), True),
         StructField("zip", StringType(), True)
@@ -19,9 +19,6 @@ def getUsers():
 
     # Read the CSV file with the specified schema
     user_df = spark.read.csv(user_path, sep='|', header=False, schema=schema)
-
-    # Select only the columns you need
-    user_df = user_df.select("user_id", "gender", "occupation", "zip")
 
     # Return the dataframe
     return user_df
